@@ -3,94 +3,84 @@ import httpx
 from mcp.server.fastmcp import FastMCP
 
 # Initialize FastMCP server
-mcp = FastMCP("weather")
+mcp = FastMCP("tfl")
 
 # Constants
-NWS_API_BASE = "https://api.weather.gov"
-USER_AGENT = "weather-app/1.0"
+TFL_API_BASE = "https://api.tfl.gov.uk"
+USER_AGENT = "tfl-mcp/1.0"
 
 
-async def make_nws_request(url: str) -> dict[str, Any] | None:
-    """Make a request to the NWS API with proper error handling."""
+async def make_tfl_request(resource: str, params: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    """Make a request to the TFL API with proper error handling."""
     headers = {"User-Agent": USER_AGENT, "Accept": "application/geo+json"}
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(url, headers=headers, timeout=30.0)
+            response = await client.get(f"{TFL_API_BASE}/{resource}", headers=headers, params=params, timeout=30.0)
             response.raise_for_status()
             return response.json()
-        except Exception:
+        except Exception as e:
             return None
 
 
-def format_alert(feature: dict) -> str:
-    """Format an alert feature into a readable string."""
-    props = feature["properties"]
-    return f"""
-Event: {props.get("event", "Unknown")}
-Area: {props.get("areaDesc", "Unknown")}
-Severity: {props.get("severity", "Unknown")}
-Description: {props.get("description", "No description available")}
-Instructions: {props.get("instruction", "No specific instructions provided")}
-"""
+def format_status(statuses: list[dict[str, Any]]) -> str:
+    """Format a status into a readable string."""
+
+    line_statuses = []
+    for status in statuses:
+        line_statuses.append(f"## {status['name']}\n")
+        line_statuses.append("")
+        for line_status in status["lineStatuses"]:
+            line_statuses.append(f"### {line_status['statusSeverityDescription']}\n")
+            line_statuses.append(f"Reason: {line_status['reason']}")
+
+            # Validity period
+            validity_periods = line_status["validityPeriods"]
+            if validity_periods:
+                line_statuses.append(
+                    f"Validity Period: {validity_periods[0]['fromDate']} to {validity_periods[0]['toDate']}"
+                )
+            else:
+                line_statuses.append("No validity period")
+
+            # Disruption type
+            disruption = line_status["disruption"]
+            line_statuses.append(f"Type: {disruption['categoryDescription']}")
+            line_statuses.append(f"Description: {disruption['description']}")
+            additional_info = disruption.get("additionalInfo", None)
+            if additional_info:
+                line_statuses.append(f"Additional Information: {additional_info}")
+
+            line_statuses.append("")
+
+    return "\n".join(line_statuses)
 
 
 @mcp.tool()
-async def get_alerts(state: str) -> str:
-    """Get weather alerts for a US state.
+async def get_line_status(lines: str) -> str:
+    """Get status for a given TfL line identifier.
+
+    The line identifier must be one of the following:
+    - "bakerloo"
+    - "central"
+    - "circle"
+    - "district"
+    - "elizabeth-line"
+    - "hammersmith-city"
+    - "jubilee"
+    - "metropolitan"
+    - "northern"
+    - "piccadilly"
+    - "windrush""
+    - "mildmay"
+    - "victoria"
+    - "waterloo-city"
 
     Args:
-        state: Two-letter US state code (e.g. CA, NY)
+        lines: A comma-separated list of TfL line identifiers.
     """
-    url = f"{NWS_API_BASE}/alerts/active/area/{state}"
-    data = await make_nws_request(url)
-
-    if not data or "features" not in data:
-        return "Unable to fetch alerts or no alerts found."
-
-    if not data["features"]:
-        return "No active alerts for this state."
-
-    alerts = [format_alert(feature) for feature in data["features"]]
-    return "\n---\n".join(alerts)
-
-
-@mcp.tool()
-async def get_forecast(latitude: float, longitude: float) -> str:
-    """Get weather forecast for a location.
-
-    Args:
-        latitude: Latitude of the location
-        longitude: Longitude of the location
-    """
-    # First get the forecast grid endpoint
-    points_url = f"{NWS_API_BASE}/points/{latitude},{longitude}"
-    points_data = await make_nws_request(points_url)
-
-    if not points_data:
-        return "Unable to fetch forecast data for this location."
-
-    # Get the forecast URL from the points response
-    forecast_url = points_data["properties"]["forecast"]
-    forecast_data = await make_nws_request(forecast_url)
-
-    if not forecast_data:
-        return "Unable to fetch detailed forecast."
-
-    # Format the periods into a readable forecast
-    periods = forecast_data["properties"]["periods"]
-    forecasts = []
-    for period in periods[:5]:  # Only show next 5 periods
-        forecast = f"""
-{period["name"]}:
-Temperature: {period["temperature"]}°{period["temperatureUnit"]}
-Wind: {period["windSpeed"]} {period["windDirection"]}
-Forecast: {period["detailedForecast"]}
-"""
-        forecasts.append(forecast)
-
-    return "\n---\n".join(forecasts)
+    data = await make_tfl_request(f"line/{lines}/status")
+    return format_status(data)
 
 
 if __name__ == "__main__":
-    # Initialize and run the server
     mcp.run(transport="stdio")
