@@ -31,7 +31,8 @@ def format_status(statuses: list[dict[str, Any]]) -> str:
         line_statuses.append("")
         for line_status in status["lineStatuses"]:
             line_statuses.append(f"### {line_status['statusSeverityDescription']}\n")
-            line_statuses.append(f"Reason: {line_status['reason']}")
+            if reason := line_status.get("reason", None):
+                line_statuses.append(f"Reason: {reason}")
 
             # Validity period
             validity_periods = line_status["validityPeriods"]
@@ -42,13 +43,12 @@ def format_status(statuses: list[dict[str, Any]]) -> str:
             else:
                 line_statuses.append("No validity period")
 
-            # Disruption type
-            disruption = line_status["disruption"]
-            line_statuses.append(f"Type: {disruption['categoryDescription']}")
-            line_statuses.append(f"Description: {disruption['description']}")
-            additional_info = disruption.get("additionalInfo", None)
-            if additional_info:
-                line_statuses.append(f"Additional Information: {additional_info}")
+            if disruption := line_status.get("disruption", None):
+                line_statuses.append(f"Type: {disruption['categoryDescription']}")
+                line_statuses.append(f"Description: {disruption['description']}")
+                additional_info = disruption.get("additionalInfo", None)
+                if additional_info:
+                    line_statuses.append(f"Additional Information: {additional_info}")
 
             line_statuses.append("")
 
@@ -82,5 +82,20 @@ async def get_line_status(lines: str) -> str:
     return format_status(data)
 
 
+async def test_locally(line: str):
+    data = await get_line_status(line)
+    print(data)
+
+
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+    import sys
+
+    # Run the server locally if the first argument is "local"
+    # This is here for debugging purposes, in general you should
+    # not run the server manually.
+    if len(sys.argv) > 1 and sys.argv[1] == "local":
+        import asyncio
+
+        asyncio.run(test_locally("circle"))
+    else:
+        mcp.run(transport="stdio")
