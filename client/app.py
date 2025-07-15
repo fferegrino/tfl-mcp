@@ -6,6 +6,7 @@ import asyncio
 import nest_asyncio
 from anthropic import Anthropic
 from mcp import ClientSession, StdioServerParameters
+import json
 
 from dotenv import load_dotenv
 
@@ -29,35 +30,31 @@ exit_stack = AsyncExitStack()
 
 def get_mcp_session():
     server_params = StdioServerParameters(command="python", args=[server], env=None)
-    stdio, write = loop.run_until_complete(
-        exit_stack.enter_async_context(stdio_client(server_params))
-    )
-    session = loop.run_until_complete(
-        exit_stack.enter_async_context(ClientSession(stdio, write))
-    )
+    stdio, write = loop.run_until_complete(exit_stack.enter_async_context(stdio_client(server_params)))
+    session = loop.run_until_complete(exit_stack.enter_async_context(ClientSession(stdio, write)))
     loop.run_until_complete(session.initialize())
     return session
 
 
 session = get_mcp_session()
 
-st.write(
-    f"This is a simple MCP client that can be used to interact with the server {server}"
-)
 
 server_response = loop.run_until_complete(session.list_tools())
 
 
-left_col, right_col = st.columns(2)
+left_col, right_col = st.columns([2,3], gap="large")
 
 with left_col:
+    st.write(f"Connected to {server}")
     query = st.text_input("Query")
+
+with right_col:
 
     st.subheader("Available tools")
     for tool in server_response.tools:
         with st.expander(tool.name):
             st.write(tool)
-with right_col:
+
     if query:
         messages = [{"role": "user", "content": query}]
         available_tools = [
@@ -70,8 +67,8 @@ with right_col:
         ]
 
         st.subheader("First interaction with the LLM")
-        st.write(messages)
-        st.write(available_tools)
+        st.write(messages[0])
+        # st.write(available_tools)
 
         response = anthropic.messages.create(
             model="claude-3-5-sonnet-20241022",
@@ -93,14 +90,10 @@ with right_col:
                 tool_name = content.name
                 tool_args = content.input
 
-                result = loop.run_until_complete(
-                    session.call_tool(tool_name, tool_args)
-                )
+                result = loop.run_until_complete(session.call_tool(tool_name, tool_args))
                 assistant_message_content.append(content)
 
-                messages.append(
-                    {"role": "assistant", "content": assistant_message_content}
-                )
+                messages.append({"role": "assistant", "content": assistant_message_content})
                 messages.append(
                     {
                         "role": "user",
@@ -115,7 +108,7 @@ with right_col:
                 )
 
                 st.subheader(f"Result of calling `{tool_name}`")
-                st.write(tool_args)
+                st.code(json.dumps(tool_args))
 
                 st.write(result.content)
 
