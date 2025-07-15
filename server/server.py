@@ -2,7 +2,6 @@ from typing import Any
 import httpx
 from mcp.server.fastmcp import FastMCP
 
-# Initialize FastMCP server
 mcp = FastMCP("tfl")
 
 # Constants
@@ -60,20 +59,9 @@ async def get_line_status(lines: str) -> str:
     """Get status for a given TfL line identifier.
 
     The line identifier must be one of the following:
-    - "bakerloo"
-    - "central"
-    - "circle"
-    - "district"
-    - "elizabeth-line"
-    - "hammersmith-city"
-    - "jubilee"
-    - "metropolitan"
-    - "northern"
-    - "piccadilly"
-    - "windrush""
-    - "mildmay"
-    - "victoria"
-    - "waterloo-city"
+        "bakerloo", "central", "circle", "district", "elizabeth-line", 
+        "hammersmith-city", "jubilee", "metropolitan", "northern", 
+        "piccadilly", "victoria", "waterloo-city"
 
     Args:
         lines: A comma-separated list of TfL line identifiers.
