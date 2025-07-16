@@ -7,6 +7,7 @@ import nest_asyncio
 from anthropic import Anthropic
 from mcp import ClientSession, StdioServerParameters
 import json
+import os
 
 from dotenv import load_dotenv
 
@@ -16,6 +17,10 @@ load_dotenv()
 
 server = sys.argv[1]
 
+if not "ANTHROPIC_API_KEY" in os.environ:
+    st.error("ANTHROPIC_API_KEY is not set")
+    st.stop()
+
 anthropic = Anthropic()
 
 # Monkey patch Streamlit's internal event loop
@@ -23,7 +28,6 @@ nest_asyncio.apply()
 
 loop = asyncio.get_event_loop()
 
-st.title("MCP Client")
 
 exit_stack = AsyncExitStack()
 
@@ -41,16 +45,15 @@ session = get_mcp_session()
 
 server_response = loop.run_until_complete(session.list_tools())
 
-
-left_col, right_col = st.columns([2,3], gap="large")
+st.title("MCP Client")
+left_col, right_col = st.columns([2, 3], gap="large")
 
 with left_col:
-    st.write(f"Connected to {server}")
+    st.write(f"Connected to _{server}_")
     query = st.text_input("Query")
 
 with right_col:
-
-    st.subheader("Available tools")
+    st.markdown(f"#### Available tools in _{server}_")
     for tool in server_response.tools:
         with st.expander(tool.name):
             st.write(tool)
@@ -66,7 +69,7 @@ with right_col:
             for tool in server_response.tools
         ]
 
-        st.subheader("First interaction with the LLM")
+        st.markdown("#### First interaction with the LLM")
         st.write(messages[0])
         # st.write(available_tools)
 
@@ -77,7 +80,7 @@ with right_col:
             tools=available_tools,
         )
 
-        st.subheader("Initial response from the LLM")
+        st.markdown("#### Initial response from the LLM")
         st.write(response.content)
 
         final_text = []
@@ -107,7 +110,7 @@ with right_col:
                     }
                 )
 
-                st.subheader(f"Result of calling `{tool_name}`")
+                st.markdown(f"#### Result of calling `{tool_name}`")
                 st.code(json.dumps(tool_args))
 
                 st.write(result.content)
@@ -121,7 +124,7 @@ with right_col:
 
                 final_text.append(response.content[0].text)
 
-        st.subheader("Messages sent to the LLM")
+        st.markdown("#### Messages sent to the LLM")
         st.write(messages)
 
         st.subheader("Final response")

@@ -2,6 +2,8 @@
 
 > Model Context Protocol is not a ground-breaking technlogy, it is a standard that puts great ideas behind a standard.
 
+[Code explanation]
+
 LLMs are undoubtedly powerful tools; however, by themselves, they are incapable of accessing knowledge that exists outside their training dataset.
 
 Without external connections, LLMs essentially live in their own closed world - a world that ends at the boundary of their training data. We can also say that they are frozen in time, which makes them useless for some tasks, such as querying real-time information, interacting with other systems, and [add more tasks].
@@ -60,10 +62,15 @@ This architecture has several important implications:
 While tool usage is already an important advancement on its own, there are several drawbacks with this _"traditional"_ approach:
 
 - **Tight coupling**: Applications must implement and maintain their own tool ecosystem, leading to duplicated efforts across different LLM applications
+
 - **Limited tool availability**: Users are restricted to only the tools provided by a specific application
+
 - **Inconsistent implementations**: Each application may implement tool interfaces differently, making it difficult for developers to create tools that work across multiple platforms
+
 - **Scaling challenges**: Adding new tools requires modifying the application code, making rapid expansion of capabilities difficult
+
 - **Security concerns**: Applications need to implement their own security models for each tool, potentially leading to inconsistent security practices
+
 - **Deployment complexity**: Tools must be deployed alongside the application, complicating the deployment process
 
 ## Model Context Protocol
@@ -117,3 +124,8 @@ In detail, the advantages are:
 4. **Dynamic Tool Access**: Applications can access new tools at runtime without code changes, simply by connecting to different MCP servers or as new tools become available.
 
 5. **Centralized Authentication**: MCP includes standardized authentication and authorization protocols, simplifying security management across tools.
+
+---
+
+## Code explanation
+
